@@ -40,7 +40,7 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
 
 #Simple Functions
   function SendAlert() {
-    mail -s $MAILSERVER "ALERT: KEMP & LetsEncrypt Integration" $RUNLOG
+    echo $RUNLOG | mail -S $MAILSERVER -s "ALERT: KEMP & LetsEncrypt Integration" $MAILTO
   }
 
   #result="$GetDateCertificateExpiry(CertificatePath)"
