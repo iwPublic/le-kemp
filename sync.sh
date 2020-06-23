@@ -33,11 +33,6 @@ KEMP2="127.0.0.2:443"
 KEMP1_PEM="/usr/local/sbin/le-kemp/identity/1.api.cert.pem"
 KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
 
-#Check requirements
-[ ! -f $LO_CERT ] && echo "Error: Local Certificate not found." && exit 2
-[ ! -f $LE_KEY ] && echo "Error: Source Key not found." && exit 2
-[ ! -f $LE_CERT ] && echo "Error: Source Certificate not found." && exit 2
-
 #Simple Functions
   function SendAlert() {
     echo $RUNLOG | mail -S $MAILSERVER -s "ALERT: KEMP & LetsEncrypt Integration" $MAILTO
@@ -60,11 +55,7 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
     curl -E $1 -X POST --data-binary @$2 -kv "https://$3/access/addcert?cert=$4&replace=1"
     return $?
   }
-
-  function MakeCertificate() {
-    cat $1 $2 > $3
-  }
-
+  
   function RenewCertificate() {
     certbot certonly -d $1
     return $?
@@ -76,14 +67,14 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
   }
 
 #Functions #TODO: Use fallback
-  function BKCERT() {
+  function BackupLocalCertificate() {
     echo "$(TimeStamp):INFO:Backing up older local certificate. $LO_CERT to $LO_CERT_BAK."
     mv $LO_CERT $LO_CERT_BAK
   }
 
-  function MKCERT() {
-    echo "$(TimeStamp):INFO:Combining newer $LE_CERT and $LE_KEY."
-    MakeCertificate $LE_CERT $LE_KEY $LO_CERT
+  function MakeLocalCertificate() {
+    echo "$(TimeStamp):INFO:Combining $LE_CERT and $LE_KEY."
+    cat $LE_CERT $LE_KEY > $LO_CERT
   }
 
   #Usage: ULCERT($CLIENTCERT $LO_CERT $KEMP1/2 $DOMAIN)
@@ -100,6 +91,12 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
   fi
   }
 
+#Check requirements
+[ ! -f $LE_KEY ] && echo "ERROR: Source Key not found." && exit 2
+[ ! -f $LE_CERT ] && echo "ERROR: Source Certificate not found." && exit 2
+[ ! -d ${LO_CERT%/*} ] && mkdir ${LO_CERT%/*}
+[ ! -f $LO_CERT ] && MakeLocalCertificate
+
 #Conditional Sequence
   echo "$(TimeStamp):INFO:Checking against local cache."
   if (bCertificateValid $LTIME $LO_CERT)
@@ -112,8 +109,8 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
     if [ $(iGetCertificateExpiry $LO_CERT) -lt $(iGetCertificateExpiry $LE_CERT) ]
     then
       #TODO: Make this elegant
-      BKCERT
-      MKCERT
+      BackupLocalCertificate
+      MakeLocalCertificate
       if [ $(ULCERT $KEMP1_PEM $LO_CERT $KEMP1 $DOMAIN) -eq 0 && $(ULCERT $KEMP2_PEM $LO_CERT $KEMP2 $DOMAIN) -eq 0 ]
       then
         exit 0
@@ -128,8 +125,8 @@ KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
         if [ $(iGetCertificateExpiry $LO_CERT) -lt $(iGetCertificateExpiry $LE_CERT) ]
         then
         #TODO: Make this elegant
-        BKCERT
-        MKCERT
+        BackupLocalCertificate
+        MakeLocalCertificate
         if [ $(ULCERT $KEMP1_PEM $LO_CERT $KEMP1 $DOMAIN) -eq 0 && $(ULCERT $KEMP2_PEM $LO_CERT $KEMP2 $DOMAIN) -eq 0 ]
         then
           exit 0
