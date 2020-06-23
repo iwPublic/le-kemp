@@ -9,7 +9,7 @@
     #- Issue "certbot certificates" to verify existence
 
 #Check for parameter first
-[ -z "$1" ] && echo "Error: Expected domain name as parameter." && exit 2
+[ -z "$1" ] && echo "ERROR: Expected domain name as parameter." && exit 2
 
 #Setup for Logs
 LOGFILE="/var/log/le-kemp/sync.log"
