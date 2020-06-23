@@ -1,6 +1,6 @@
 #!/bin/bash
 #KEMP & LetsEncrypt certbot Integration
-#08.01.2016 - Referred from Alexander Ganser
+#08.01.2016 - Referenced from Alexander Ganser
 #08.05.2019 - Dave Wee
 #22.06.2020 - Dave Wee
     #- Accomodate ACME certbot functionality changes.
