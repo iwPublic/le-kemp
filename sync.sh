@@ -33,6 +33,11 @@ KEMP2="127.0.0.2:443"
 KEMP1_PEM="/usr/local/sbin/le-kemp/identity/1.api.cert.pem"
 KEMP2_PEM="/usr/local/sbin/le-kemp/identity/2.api.cert.pem"
 
+#Check requirements
+[ -f $LO_CERT ] && echo "Error: Local Certificate not found." && exit 2
+[ -f $LE_KEY ] && echo "Error: Source Key not found." && exit 2
+[ -f $LE_CERT ] && echo "Error: Source Certificate not found." && exit 2
+
 #Simple Functions
   function SendAlert() {
     mail -s $MAILSERVER "ALERT: KEMP & LetsEncrypt Integration" $RUNLOG
