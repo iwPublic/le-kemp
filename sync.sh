@@ -7,7 +7,6 @@
 #Pre-Initialize
   [ -z "$1" ] && echo "ERROR:Expected minimally domain name as parameter." && exit 2
   [ $2 = "resync "] && echo "INFO:Resync is specified." && RESYNC = true
-  [ $3 = "compare" ]
   cd /usr/local/sbin/le-kemp
 
 #Setup for Logs
