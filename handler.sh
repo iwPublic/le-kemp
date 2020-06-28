@@ -132,7 +132,7 @@
 
 #Initialize
   cd /usr/local/sbin/le-kemp
-  [ ! -f ./le-kemp.conf ] && shout "$(sTimeStamp):ERROR:Configuration file not found."
+  [ ! -f ./handler.conf ] && shout "$(sTimeStamp):ERROR:Configuration file not found."
   [ ! -f $LE_KEY ] && shout "$(sTimeStamp):ERROR:Source Private Key not found."
   [ ! -f $LE_CERT ] && shout "$(sTimeStamp):ERROR:Source Certificate not found."
   [ ! -d ${LO_CERT%/*} ] && mkdir -pm700 ${LO_CERT%/*} &&
@@ -142,7 +142,7 @@
     echo "WARN:Directory was created for $LO_CERT"
   fi
   [ ! -f $LO_CERT ] && MakeLocalCertificate && echo "WARN:Sync $LO_CERT from $LE_CERT"
-  TARGETS=$(sed -nE "/\[[Targets]*\]/{:l n;/^(\[.*\])?$/q;p;bl}" le-kemp.conf)
+  TARGETS=$(sed -nE "/\[[Targets]*\]/{:l n;/^(\[.*\])?$/q;p;bl}" handler.conf)
 
 #Main
   if [ ${#OPTIONS[@]} -gt 0 ]; then
