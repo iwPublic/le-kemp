@@ -4,6 +4,7 @@
 #08.05.2019 - Adaptation
 #22.06.2020 - Major Revamp
 #27.06.2020 - Added option for resync and upload
+LOGFILE="/var/log/le-kemp/sync.log"
 
 #Internal Script Functions
   sTimeStamp() {
@@ -17,7 +18,7 @@
     echo "$(sTimeStamp):ERROR:Terminating"
     exit 1
   }
-  
+
   SendAlert() {
     echo $RUNLOG | mail -S $MAILSERVER -s "ALERT:KEMP & LetsEncrypt Integration" $MAILTO
   }
@@ -41,7 +42,13 @@
       exit 2
   }
 
+#Setup for Log #TODO: Move to configuration file
+  MAILTO="user@domain.tld"
+  MAILSERVER="127.0.0.1:25"
+  LTIME="2592000" #30 days in seconds or OpenSSL
+
 #Initialize
+  cd /usr/local/sbin/le-kemp
   while getopts d:o:ql opt
   do
     case $opt in
@@ -52,28 +59,37 @@
         ;;
       o)
         OPTIONS=($(echo "$OPTARG" | tr ',' ' '))
+        for option in ${OPTIONS[@]}
+        do
+          [[ ! $option =~ ^(compare|resync|upload)$ ]] && shout "$(sTimeStamp):ERROR:Options specified unknown actions."
+        done
+        ;;
+      *)
+        shout "$(sTimeStamp):ERROR:Invalid options specified."
         ;;
     esac
   done
   shift $((OPTIND -1))
-
   [ "$OPTIND" -eq 1 ] && showhelp && exit 2
-  [ -z $DOMAIN ] && showhelp && exit 2
+  [ -z $DOMAIN ] && showhelp && shout "$(sTimeStamp):ERROR:Domain (FQDN) must be specified."
+  [ ! -r ./handler.conf ] && shout "$(sTimeStamp):ERROR:Configuration file not found."
+  TARGETS=$(sed -nE "/\[[Targets]*\]/{:l n;/^(\[.*\])?$/q;p;bl}" handler.conf)
 
-#Setup for Logs
-  LOGFILE="/var/log/le-kemp/sync.log"
-  MAILTO="user@domain.tld"
-  MAILSERVER="127.0.0.1:25"
-
-#Setup for Certificate Paths
+#Setup for Certificate
   LO_CERT="./certificates/$DOMAIN/full.pem" #Path to local certificate
   LO_CERT_BAK="./certificates/$DOMAIN/full.bak" #Path to local backup certificate
   LE_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"  #Source Private Key
   LE_CERT="/etc/letsencrypt/live/$DOMAIN/cert.pem"  #Source Public Key
   LE_CHAIN="/etc/letsencrypt/live/$DOMAIN/chain.pem" #Source Intermediate CA #TODO:Keep KEMP updated
-
-#Setup for OpenSSL
-  LTIME="5356800" #30 days in seconds
+  [ ! -r $LE_KEY ] && shout "$(sTimeStamp):ERROR:Source Private Key not found."
+  [ ! -r $LE_CERT ] && shout "$(sTimeStamp):ERROR:Source Certificate not found."
+  [ ! -d ${LO_CERT%/*} ] && mkdir -pm700 ${LO_CERT%/*} &&
+  if [ $? -ne 0 ]; then
+    shout "$(sTimeStamp):ERROR:Unable to create directory for $LO_CERT"
+  else
+    echo "$(sTimeStamp):WARN:Directory was created for $LO_CERT"
+  fi
+  [ ! -w $LO_CERT ] && MakeLocalCertificate && echo "WARN:Sync $LO_CERT from $LE_CERT"
 
 #Functions
   function iGetCertificateExpiry() {
@@ -130,20 +146,6 @@
       done
   }
 
-#Initialize
-  cd /usr/local/sbin/le-kemp
-  [ ! -f ./handler.conf ] && shout "$(sTimeStamp):ERROR:Configuration file not found."
-  [ ! -f $LE_KEY ] && shout "$(sTimeStamp):ERROR:Source Private Key not found."
-  [ ! -f $LE_CERT ] && shout "$(sTimeStamp):ERROR:Source Certificate not found."
-  [ ! -d ${LO_CERT%/*} ] && mkdir -pm700 ${LO_CERT%/*} &&
-  if [ $? -ne 0 ]; then
-    shout "ERROR:Unable to create directory for $LO_CERT"
-  else
-    echo "WARN:Directory was created for $LO_CERT"
-  fi
-  [ ! -f $LO_CERT ] && MakeLocalCertificate && echo "WARN:Sync $LO_CERT from $LE_CERT"
-  TARGETS=$(sed -nE "/\[[Targets]*\]/{:l n;/^(\[.*\])?$/q;p;bl}" handler.conf)
-
 #Main
   if [ ${#OPTIONS[@]} -gt 0 ]; then
     for i in ${OPTIONS[@]}
@@ -153,11 +155,12 @@
           shout "TODO: Not done yet - Download and Compare"
           ;;
           "resync")
-          echo "INFO: Options specified for resync"
+          echo "INFO:Options specified for resync."
           BackupLocalCertificate
           MakeLocalCertificate
           ;;
           "upload")
+          echo "INFO:Options specified for upload."
           UploadLocalCertificate
           ;;
         esac
